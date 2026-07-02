@@ -4,9 +4,9 @@
   "author": "keaidell-cyber",
   "scripts": [
     {
-      "name": "脚本1的名字",
-      "description": "这个脚本的功能说明",
-      "author": "keaidell-cyber",
+      "name": "绝妖星P3麻将指挥",
+      "description": "麻将标点",
+      "author": "noXQY",
       "version": "1.0.0",
       "url": "https://raw.githubusercontent.com/keaidell-cyber/MyFF14Scripts/main/P3麻将指挥.cs",
       "type": "C#"
