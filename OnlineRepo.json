@@ -1,15 +1,15 @@
-{
-  "name": "我的FF14脚本库",
-  "description": "一些好用的脚本",
-  "author": "keaidell-cyber",
-  "scripts": [
-    {
-      "name": "绝妖星P3麻将指挥",
-      "description": "麻将标点",
-      "author": "noXQY",
-      "version": "1.0.0",
-      "url": "https://raw.githubusercontent.com/keaidell-cyber/MyFF14Scripts/main/P3麻将指挥.cs",
-      "type": "C#"
-    }
-  ]
-}
+[
+  {
+    "Name": "[妖星乱舞绝境战]P3指挥",
+    "Guid": "9116F56A-2123-5A29-6466-040E8FA0A060",
+    "Version": "1.0.0.6",
+    "Author": "XQY",
+    "Repo": "",
+    "DownloadUrl": "https://github.com/keaidell-cyber/MyFF14Scripts/blob/main/P3%E9%BA%BB%E5%B0%86%E6%8C%87%E6%8C%A5.cs",
+    "Note": "",
+    "UpdateInfo": "",
+    "TerritoryIds": [
+      1363
+    ]
+  }
+]
