@@ -1,4 +1,4 @@
-﻿using Dalamud.Utility.Numerics;
+using Dalamud.Utility.Numerics;
 using KodakkuAssist.Data;
 using KodakkuAssist.Extensions;
 using KodakkuAssist.Module.Draw;
@@ -18,13 +18,16 @@ using System.Threading.Tasks;
 
 namespace FF14脚本
 {
-    [ScriptType(name: "绝凯夫卡p3麻将指挥", territorys: [1363], guid: "9116F56A-2123-5A29-6466-040E8FA0A060", version: "1.0.0.7", author: "XQY")]
+    [ScriptType(name: "绝凯夫卡p3麻将指挥", territorys: [1363], guid: "9116F56A-2123-5A29-6466-040E8FA0A060", version: "1.0.0.8", author: "XQY")]
     public class P3麻将指挥模式
     {
         #region 用户设置
 
         [UserSetting("指挥模式")]
         public static bool 指挥模式 { get; set; } = false;
+
+        [UserSetting("P3一运给火buff两人上禁止12")]
+        public static bool P3一运标点 { get; set; } = false;
 
         [UserSetting("默语调试")]
         public static bool 调试 { get; set; } = false;
@@ -188,7 +191,7 @@ namespace FF14脚本
             究极冲击波次数.Clear();
             ac.Method.MarkClear();
 
-            辅助方法_.发送默语(ac, "数据已重置");
+            if(调试)辅助方法_.发送默语(ac, "数据已重置");
         }
 
         [ScriptMethod(eventType: EventTypeEnum.VfxEvent, name: "麻将给所有人标点", eventCondition: ["Id:regex:^(33[6-9]|43[7-9]|440)$"], userControl: false, suppress: 500)]
@@ -236,7 +239,8 @@ namespace FF14脚本
             var 正确排序的数组2 = 辅助方法_.根据顺逆旋转数组(麻将起点, 麻将顺逆, 所有人的麻将);
             八方字典.TryGetValue(麻将起点, out string 麻将起点str);
             顺逆字典.TryGetValue(麻将顺逆, out string 麻将顺逆str);
-            辅助方法_.发送默语(ac, $"{麻将起点str}点开始{麻将顺逆str}");
+            消息列表.Add($"麻将起点:{麻将起点str}");
+            消息列表.Add($"麻将顺逆:{麻将顺逆str}");
 
             if (调试) 
             {
@@ -270,8 +274,8 @@ namespace FF14脚本
             string str = e["StatusID"];
             if (str != "1600") return;
 
-            if (火buff.Count < 2 && 指挥模式) { if(调试)辅助方法_.发送默语(ac, "收集火buff的两人不完全"); return; }
-            else if(火buff.Count == 2&&指挥模式)
+            if (火buff.Count < 2 && P3一运标点) { if(调试)辅助方法_.发送默语(ac, "收集火buff的两人不完全"); return; }
+            else if(火buff.Count == 2&&P3一运标点)
             {
                 for(int i = 0; i < 火buff.Count; i++)
                 {
@@ -289,7 +293,7 @@ namespace FF14脚本
         [ScriptMethod(eventType: EventTypeEnum.StartCasting, name: "真空波清除火buff标点", eventCondition: ["ActionId:47891"], userControl: false)]
         public void 真空波清除火buff标点(Event e, ScriptAccessory ac)
         {
-            if(!指挥模式)return;
+            if(!P3一运标点)return;
             if (火buff.Count > 0)
             {
                 ac.Method.MarkClear();
