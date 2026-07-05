@@ -15,10 +15,11 @@ using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using System.Threading;
 
 namespace FF14脚本
 {
-    [ScriptType(name: "绝凯夫卡p3麻将指挥", territorys: [1363], guid: "9116F56A-2123-5A29-6466-040E8FA0A060", version: "1.0.0.8", author: "XQY")]
+    [ScriptType(name: "绝凯夫卡p3麻将指挥", territorys: [1363], guid: "9116F56A-2123-5A29-6466-040E8FA0A060", version: "1.0.0.17", author: "XQY")]
     public class P3麻将指挥模式
     {
         #region 用户设置
@@ -38,8 +39,11 @@ namespace FF14脚本
         [UserSetting("发送到小队")]
         public static bool 发送到小队 { get; set; } = false;
 
+        [UserSetting("发送可视化麻将顺序到小队")]
+        public static bool 发送可视化麻将顺序到小队 { get; set; } = false;
+
         #endregion
-        #region 各种各种变量
+        #region 各种变量
         List<Vector3> 究极冲击波次数 = new List<Vector3>();
         Vector3 场中 = new Vector3(100, 0, 100);
         int 冲锋顺逆 = 0;//1顺 -1逆 0默认
@@ -73,7 +77,8 @@ namespace FF14脚本
 
         };
         List<string> 麻将安全区 = new List<string> { "A2之间", "2B之间", "B3之间", "3C之间", "C4之间", "4D之间", "D1之间", "1A之间", "不知道" };
-        int[] 所有人的麻将 = new int[8];//0~7索引 记录1~8麻将
+        List<int> 所有人的麻将 = Enumerable.Repeat(-1, 8).ToList();
+        List<int> 麻将编号2 = new List<int> { 1,2, 3, 4, 5, 6, 7, 8 };
         MarkType[] 标点 = new MarkType[] { MarkType.Attack1, MarkType.Attack2, MarkType.Attack3, MarkType.Attack4, MarkType.Attack5, MarkType.Attack6, MarkType.Attack7, MarkType.Attack8 };
         IReadOnlyList<MarkType> 火点名标点 = new List<MarkType> { MarkType.Stop1, MarkType.Stop2 };
         List<int> 火buff = new List<int>();
@@ -95,7 +100,11 @@ namespace FF14脚本
             {0 ,"未知"  }
             
         };
+
         #endregion
+
+
+
         #region 数据收集
         /// <summary>
         /// 收集究极冲击波起点和顺逆用来判断麻将起点和顺逆。
@@ -181,13 +190,13 @@ namespace FF14脚本
         {
             究极冲击波次数.Clear();
             冲锋顺逆 = 0;
-            麻将顺逆 = 0;//1顺 -1逆 0默认
+            麻将顺逆 = 0;
             麻将起点 = -1;
             麻将编号 = 0;
             麻将数据收集完成 = false;
             收集次数 = 0;
-            Array.Clear(所有人的麻将, 0, 所有人的麻将.Length);
-            火buff.Clear();// ✅ 正确：将原数组全部置为 0
+            所有人的麻将 = Enumerable.Repeat(-1, 8).ToList();
+            火buff.Clear();
             究极冲击波次数.Clear();
             ac.Method.MarkClear();
 
@@ -199,16 +208,17 @@ namespace FF14脚本
         {
             await Task.Delay(500);
             if (收集次数 < 8) { 辅助方法_.发送默语(ac, "收集数据不完全"); return; }
+            if(所有人的麻将.Contains(-1)) { 辅助方法_.发送默语(ac, "收集数据不完全"); return; }
 
-            var 正确排序的数组 = 辅助方法_.根据顺逆旋转数组(麻将起点, 麻将顺逆, 所有人的麻将);
+            var 正确排序的数组 = 辅助方法_.根据顺逆右移数组(麻将起点, 麻将顺逆, 所有人的麻将);
 
-            List<string> 消息列表 = new List<string>();
-            for (int j = 0; j < 8; j++)
+            List<string> 消息列表 = new List<string>(); 
+            for (int j = 0; j < 正确排序的数组.Count; j++)
             {
                 队伍优先级字典.TryGetValue(正确排序的数组[j], out string str2);
                 消息列表.Add($"{str2}去{麻将安全区[j]}");
             }
-            for (int i = 0; i < 8; i++)
+            for (int i = 0; i < 正确排序的数组.Count; i++)
             {
                 辅助方法_.队伍索引标点(ac, 正确排序的数组[i], 标点[i], 本地标点);
                 队伍优先级字典.TryGetValue(正确排序的数组[i], out string str);
@@ -230,13 +240,27 @@ namespace FF14脚本
                 ac.Method.MarkClear();
                 辅助方法_.发送默语(ac, "已清除标点");
             }
+            
         }
         [ScriptMethod(eventType: EventTypeEnum.ActionEffect, name: "龙卷风发送麻将消息", eventCondition: ["ActionId:47864"], userControl: false,suppress: 500)]
         public void 龙卷风发送麻将消息(Event e, ScriptAccessory ac)
         {
+            if (发送可视化麻将顺序到小队) 
+            {
+                var 正确的麻将排序 = 辅助方法_.根据顺逆右移数组(麻将起点, 麻将顺逆, 麻将编号2);
+                var 可视化消息列表 = new List<string>();
+                可视化消息列表.Add($"---------------------"); 
+                可视化消息列表.Add($"        {正确的麻将排序[7]}    {正确的麻将排序[0]}        ");
+                可视化消息列表.Add($"    {正确的麻将排序[6]}            {正确的麻将排序[1]}    ");
+                可视化消息列表.Add($"    {正确的麻将排序[5]}            {正确的麻将排序[2]}    ");
+                可视化消息列表.Add($"        {正确的麻将排序[4]}    {正确的麻将排序[3]}        ");
+                可视化消息列表.Add($"---------------------");
+                辅助方法_.按顺序发送小队(ac, 可视化消息列表, 收集次数);
+                if(调试) 默语调试辅助方法.发送默语调试(ac, 可视化消息列表, 收集次数);
+            }
             if(收集次数 != 8)  return;
             List<string> 消息列表 = new List<string>();
-            var 正确排序的数组2 = 辅助方法_.根据顺逆旋转数组(麻将起点, 麻将顺逆, 所有人的麻将);
+            var 正确排序的数组2 = 辅助方法_.根据顺逆右移数组(麻将起点, 麻将顺逆, 所有人的麻将);
             八方字典.TryGetValue(麻将起点, out string 麻将起点str);
             顺逆字典.TryGetValue(麻将顺逆, out string 麻将顺逆str);
             消息列表.Add($"麻将起点:{麻将起点str}");
@@ -244,20 +268,45 @@ namespace FF14脚本
 
             if (调试) 
             {
-                for(int j = 0; j < 8; j++)
+                if (麻将顺逆 == 1)
                 {
-                    队伍优先级字典.TryGetValue(正确排序的数组2[j], out string str2);
-                    消息列表.Add($"{str2}去{麻将安全区[j]}");
+                    for (int j = 0; j < 8; j++)
+                    {
+                        队伍优先级字典.TryGetValue(正确排序的数组2[j], out string str2);
+                        消息列表.Add($"{str2}去{麻将安全区[j]}");
+                    }
                 }
-                辅助方法_.按顺序发送默语(ac, 消息列表, 收集次数);
+                else if (麻将顺逆 == -1)
+                {
+                    for (int j = 0; j < 8; j++)
+                    {
+                        队伍优先级字典.TryGetValue(正确排序的数组2[j], out string str2);
+                        消息列表.Add($"{str2}去{麻将安全区[j]}");
+                    }
+                }
+                else { 消息列表.Add("麻将顺逆未知,无法发送小队消息"); }
+                默语调试辅助方法.发送默语调试(ac, 消息列表, 收集次数);
             }
             if (发送到小队)
             {
-                for (int j = 0; j < 8; j++)
+                if (麻将顺逆 == 1)
                 {
-                    队伍优先级字典.TryGetValue(正确排序的数组2[j], out string str2);
-                    消息列表.Add($"{str2}去{麻将安全区[j]}");
+                    for (int j = 0; j < 8; j++)
+                    {
+                        队伍优先级字典.TryGetValue(正确排序的数组2[j], out string str2);
+                        消息列表.Add($"{str2}去{麻将安全区[j]}");
+                    }
                 }
+                else if (麻将顺逆 == -1)
+                {
+                    for (int j = 0; j < 8; j++)
+                    {
+                        队伍优先级字典.TryGetValue(正确排序的数组2[j], out string str2);
+                        消息列表.Add($"{str2}去{麻将安全区[j]}");
+                    }
+                }
+                else { 消息列表.Add("麻将顺逆未知,无法发送小队消息"); }
+                ;
                 辅助方法_.按顺序发送小队(ac, 消息列表, 收集次数);
             }
 
@@ -435,53 +484,44 @@ namespace FF14脚本
 
             return targetId == myid;
         }
-        public static T[] 顺时针旋转数组<T>(int 麻将起点, T[] arr)
+        public static List<int> 麻将顺时针右移数组(int 麻将起点, List<int> list)
         {
-            if (arr.Length == 0 || arr.Length < 8 || 麻将起点 == 0) return arr;
-
-            if (麻将起点 < 0 || 麻将起点 > 8) return arr;
-            var 结果 = new T[8];
-            Array.Copy(arr, 8 - 麻将起点, 结果, 0, 麻将起点);
-            Array.Copy(arr, 0, 结果, 麻将起点, 8 - 麻将起点);
-            return 结果;
-        }
-        public static T[] 逆时针旋转数组<T>(int 麻将起点, T[] arr)
+        if (list.Contains(-1) || 麻将起点 < 0 || 麻将起点 > 8) return list;
+        if (麻将起点 == 0) return list;
+        int k = 麻将起点; 
+        int n = list.Count;
+        List<int> result = list.Skip(n - k).Concat(list.Take(n - k)).ToList();
+        return result;
+          }
+        public static List<int> 麻将逆时针左移数组(int 麻将起点, List<int> list)
         {
-            var 结果 = new T[arr.Length];
+          if (list.Contains(-1) || 麻将起点 < 0 || 麻将起点 > 8) return list    ;
+          List<int> newlist = new List<int>();
+          newlist = list.Reverse<int>().ToList();
+        if(麻将起点 == 0) return newlist;
+        int k = 麻将起点;
+        int n = list.Count;
+        List<int> result = newlist.Skip(n-k).Concat(newlist.Take(n-k)).ToList();
+        return result;
 
-            if (arr.Length == 0 || arr.Length < 8) return arr;
-            if (麻将起点 == 0)
-            {
-                for (int i = 0; i < 8; i++)
-                {
-                    结果[i] = arr[8 - 1 - i];
-
-                }
-                return 结果;
-            }
-            Array.Copy(arr, 麻将起点, 结果, 0, 麻将起点);
-            for (int i = 0; i < 8 - 麻将起点; i++)
-            {
-                结果[i + 麻将起点] = arr[8 - 1 - i];
-            }
-            return 结果;
-
-
-        }
+    }
         public static void 发送默语(ScriptAccessory ac, string 默语内容)
         {
             if(string.IsNullOrWhiteSpace(默语内容)) return;
             ac.Method.SendChat($"/e {默语内容}");
         }
-        public static T[] 根据顺逆旋转数组<T>(int 麻将起点, int 麻将顺逆, T[] arr)
+        public static List<int> 根据顺逆右移数组(int 麻将起点, int 麻将顺逆, List<int> list)
         {
-            if (麻将顺逆 == 0) return arr;
-            else if (麻将顺逆 == 1) return 顺时针旋转数组(麻将起点, arr);
-            else return 逆时针旋转数组(麻将起点, arr);
+            if (麻将顺逆 == 0) return list;
+            else if (麻将顺逆 == 1) return 麻将顺时针右移数组(麻将起点, list);
+            else return 麻将逆时针左移数组(麻将起点, list);
         }
         public static void 队伍索引标点(this ScriptAccessory sa, int idx, MarkType marker, bool local = false)
         {
-            sa.Method.Mark(sa.Data.PartyList[idx], marker, local);
+           if(idx < 0 || idx >8) { 辅助方法_.发送默语(sa, $"队伍索引{idx}不在范围内,无法标点"); return; }
+        
+    
+           sa.Method.Mark(sa.Data.PartyList[idx], marker, local);
         }
         public static void 按顺序发送小队(ScriptAccessory ac, List<string> 默语内容,int 版本号)
         {
@@ -524,4 +564,39 @@ namespace FF14脚本
 
 
     }
+public static class  默语调试辅助方法
+{
+    private static readonly SemaphoreSlim _mutex = new SemaphoreSlim(1, 1);
+    public static void 发送默语调试(ScriptAccessory ac, List<string> 默语内容, int 版本号)
+    {
+        
+        if (默语内容 == null || 默语内容.Count == 0) return;
+        if (版本号 == 0) return; 
+
+
+        Task.Run(async () =>
+        {
+           
+            await _mutex.WaitAsync();
+            try
+            {
+               
+                for (int i = 0; i < 默语内容.Count; i++)
+                {
+                    ac.Method.SendChat($"/e {默语内容[i]}");
+                    if (i + 1 < 默语内容.Count)
+                    {
+                        await Task.Delay(150);
+                    }
+                }
+            }
+            finally
+            {
+               
+                _mutex.Release();
+            }
+        });
+    }
+}
+
 
