@@ -19,7 +19,7 @@ using System.Threading;
 
 namespace FF14脚本
 {
-    [ScriptType(name: "绝凯夫卡p3麻将指挥", territorys: [1363], guid: "9116F56A-2123-5A29-6466-040E8FA0A060", version: "1.0.0.17", author: "XQY")]
+    [ScriptType(name: "绝凯夫卡p3麻将指挥", territorys: [1363], guid: "9116F56A-2123-5A29-6466-040E8FA0A060", version: "1.0.0.18", author: "XQY")]
     public class P3麻将指挥模式
     {
         #region 用户设置
@@ -207,6 +207,7 @@ namespace FF14脚本
         public async void 麻将给所有人标点(Event e, ScriptAccessory ac)
         {
             await Task.Delay(500);
+            if(!指挥模式) return;
             if (收集次数 < 8) { 辅助方法_.发送默语(ac, "收集数据不完全"); return; }
             if(所有人的麻将.Contains(-1)) { 辅助方法_.发送默语(ac, "收集数据不完全"); return; }
 
@@ -322,9 +323,10 @@ namespace FF14脚本
             await Task.Delay(500);
             string str = e["StatusID"];
             if (str != "1600") return;
+            if(!P3一运标点) return;
 
-            if (火buff.Count < 2 && P3一运标点) { if(调试)辅助方法_.发送默语(ac, "收集火buff的两人不完全"); return; }
-            else if(火buff.Count == 2&&P3一运标点)
+            if (火buff.Count < 2 ) { if(调试)辅助方法_.发送默语(ac, "收集火buff的两人不完全"); return; }
+            else if(火buff.Count == 2)
             {
                 for(int i = 0; i < 火buff.Count; i++)
                 {
