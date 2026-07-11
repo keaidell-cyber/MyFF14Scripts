@@ -19,7 +19,7 @@ using System.Threading;
 
 namespace FF14脚本
 {
-    [ScriptType(name: "绝凯夫卡p3麻将指挥", territorys: [1363], guid: "9116F56A-2123-5A29-6466-040E8FA0A060", version: "1.0.0.21", author: "XQY")]
+    [ScriptType(name: "绝凯夫卡p3麻将指挥", territorys: [1363], guid: "9116F56A-2123-5A29-6466-040E8FA0A060", version: "1.0.0.28", author: "XQY")]
     public class P3麻将指挥模式
     {
         #region 用户设置
@@ -54,6 +54,7 @@ namespace FF14脚本
         bool 麻将数据收集完成 = false;
         int 麻将编号 = 0;
         int 收集次数 = 0;
+        int 究极冲击波次数1 = 0;
         private CancellationTokenSource 令牌源 = new CancellationTokenSource();
 
         Dictionary<int, int> _麻将编号 = new Dictionary<int, int>
@@ -115,6 +116,7 @@ namespace FF14脚本
         [ScriptMethod(eventType: EventTypeEnum.ActionEffect, name: "收集究极冲击波", eventCondition: ["ActionId:47843"], userControl: false, suppress: 500)]
         public void 收集究极冲击波(Event e, ScriptAccessory ac)
         {
+            究极冲击波次数1++;
             if (麻将数据收集完成) return;
             string SourcePosition = e["SourcePosition"];
             if (string.IsNullOrWhiteSpace(SourcePosition)) return;
@@ -201,6 +203,7 @@ namespace FF14脚本
             麻将编号 = 0;
             麻将数据收集完成 = false;
             收集次数 = 0;
+            究极冲击波次数1 = 0;
             所有人的麻将 = Enumerable.Repeat(-1, 8).ToList();
             火buff.Clear();
             究极冲击波次数.Clear();
@@ -252,11 +255,14 @@ namespace FF14脚本
             
             if(收集次数 != 8)  return;
             List<string> 消息列表 = new List<string>();
+            List<string> 调试消息列表 = new List<string>();
             var 正确排序的数组2 = 辅助方法_.根据顺逆右移数组(麻将起点, 麻将顺逆, 所有人的麻将);
             八方字典.TryGetValue(麻将起点, out string 麻将起点str);
             顺逆字典.TryGetValue(麻将顺逆, out string 麻将顺逆str);
             消息列表.Add($"麻将起点:{麻将起点str}");
             消息列表.Add($"麻将顺逆:{麻将顺逆str}");
+            调试消息列表.Add($"麻将起点:{麻将起点str}");
+            调试消息列表.Add($"麻将顺逆:{麻将顺逆str}");
 
             if (调试) 
             {
@@ -265,7 +271,7 @@ namespace FF14脚本
                     for (int j = 0; j < 8; j++)
                     {
                         队伍优先级字典.TryGetValue(正确排序的数组2[j], out string str2);
-                        消息列表.Add($"{str2}去{麻将安全区[j]}");
+                        调试消息列表.Add($"{str2}去{麻将安全区[j]}");
                     }
                 }
                 else if (麻将顺逆 == -1)
@@ -273,13 +279,13 @@ namespace FF14脚本
                     for (int j = 0; j < 8; j++)
                     {
                         队伍优先级字典.TryGetValue(正确排序的数组2[j], out string str2);
-                        消息列表.Add($"{str2}去{麻将安全区[j]}");
+                        调试消息列表.Add($"{str2}去{麻将安全区[j]}");
                     }
                 }
-                else { 消息列表.Add("麻将顺逆未知,无法发送小队消息"); }
-                默语调试辅助方法.发送默语调试(ac, 消息列表, 收集次数);
+                else { 调试消息列表.Add("麻将顺逆未知,无法发送小队消息"); }
+                默语调试辅助方法.发送默语调试(ac, 调试消息列表, 收集次数);
             }
-            if (发送到小队||发送可视化麻将顺序到小队)
+            if (发送到小队)
             {
                 if (麻将顺逆 == 1&& 发送到小队)
                 {
@@ -299,20 +305,7 @@ namespace FF14脚本
                 }
                 else { 消息列表.Add("麻将顺逆未知,无法发送小队消息"); }
                 ;
-                /*if (发送可视化麻将顺序到小队)
-                {
-                    var 正确的麻将排序 = 辅助方法_.根据顺逆右移数组(麻将起点, 麻将顺逆, 麻将编号2);
-                    var 可视化消息列表 = new List<string>();
-                    可视化消息列表.Add($"---------------------");
-                    可视化消息列表.Add($"        {正确的麻将排序[7]}    {正确的麻将排序[0]}        ");
-                    可视化消息列表.Add($"    {正确的麻将排序[6]}            {正确的麻将排序[1]}    ");
-                    可视化消息列表.Add($"    {正确的麻将排序[5]}            {正确的麻将排序[2]}    ");
-                    可视化消息列表.Add($"        {正确的麻将排序[4]}    {正确的麻将排序[3]}        ");
-                    可视化消息列表.Add($"---------------------");
-                    消息列表.AddRange(可视化消息列表);
-                    if (调试) 默语调试辅助方法.发送默语调试(ac, 可视化消息列表, 收集次数);
-                }
-                */
+                
                 辅助方法_.按顺序发送小队(ac, 消息列表, 收集次数);
             }
 
@@ -362,28 +355,40 @@ namespace FF14脚本
         public async void 究极冲击波播报抽象画图(Event e, ScriptAccessory ac)
         {
             await Task.Delay(500);
-            if(发送可视化麻将顺序到小队&&麻将数据收集完成)
+            if(!麻将数据收集完成)
             {
+                if(调试) 辅助方法_.发送默语(ac, "麻将数据收集未完成");
+                return;
+            }
+            if(究极冲击波次数1 != 2) { if(调试) 辅助方法_.发送默语(ac, $"究极冲击波轮数不正确，当前为 {究极冲击波次数1} 轮"); return; }
+            if(发送可视化麻将顺序到小队&&麻将数据收集完成&&究极冲击波次数1 == 2)
+            {
+                
                 try
                 {
+                   
+                    int 毫秒 = 500;
                     uint Uint毫秒 = 发送时间 * 1000;
-                    int 毫秒 = (int)Uint毫秒;
+                    if(Uint毫秒 == 0) {  毫秒 = 500; }
+                    else {  毫秒 = (int)Uint毫秒; }
+                    
                     令牌源.Cancel();
                     令牌源 = new CancellationTokenSource();
-                    CancellationToken 令牌源2 = 令牌源.Token;
+                    CancellationToken 当前令牌 = 令牌源.Token;     
 
-                    await Task.Delay(毫秒, 令牌源2);
+                    await Task.Delay(毫秒, 当前令牌);
+                    if (调试) 辅助方法_.发送默语(ac, "正在发送可视化麻将顺序到小队");
                     var 正确排序的数组2 = 辅助方法_.根据顺逆右移数组(麻将起点, 麻将顺逆, 所有人的麻将);
                     var 正确的麻将排序 = 辅助方法_.根据顺逆右移数组(麻将起点, 麻将顺逆, 麻将编号2);
-                    var 可视化消息列表 = new List<string>();
-                    可视化消息列表.Add($"---------------------");
-                    可视化消息列表.Add($"        {正确的麻将排序[7]}    {正确的麻将排序[0]}        ");
-                    可视化消息列表.Add($"    {正确的麻将排序[6]}            {正确的麻将排序[1]}    ");
-                    可视化消息列表.Add($"    {正确的麻将排序[5]}            {正确的麻将排序[2]}    ");
-                    可视化消息列表.Add($"        {正确的麻将排序[4]}    {正确的麻将排序[3]}        ");
-                    可视化消息列表.Add($"---------------------");
-                    辅助方法_.按顺序发送小队(ac, 可视化消息列表, 收集次数);
-                    if (调试) 默语调试辅助方法.发送默语调试(ac, 可视化消息列表, 收集次数);
+                    var 可视化消息列表3 = new List<string>();
+                    可视化消息列表3.Add($"---------------------");
+                    可视化消息列表3.Add($"        {正确的麻将排序[7]}    {正确的麻将排序[0]}        ");
+                    可视化消息列表3.Add($"    {正确的麻将排序[6]}            {正确的麻将排序[1]}    ");
+                    可视化消息列表3.Add($"    {正确的麻将排序[5]}            {正确的麻将排序[2]}    ");
+                    可视化消息列表3.Add($"        {正确的麻将排序[4]}    {正确的麻将排序[3]}        ");
+                    可视化消息列表3.Add($"---------------------");
+                    辅助方法_.按顺序发送小队(ac, 可视化消息列表3, 1);
+                    if (调试) 默语调试辅助方法.发送默语调试(ac, 可视化消息列表3, 1);
                     
                     
                         
@@ -391,12 +396,13 @@ namespace FF14脚本
                 }
                 catch (Exception ex) { ac.Log.Debug($"发送可视化麻将顺序到小队失败: {ex.Message}"); }
             }
+            
 
 
 
 
 
-        }
+         }
     }
         #endregion
  }
