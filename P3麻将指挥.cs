@@ -19,7 +19,7 @@ using System.Threading;
 
 namespace FF14脚本
 {
-    [ScriptType(name: "绝凯夫卡p3麻将指挥", territorys: [1363], guid: "9116F56A-2123-5A29-6466-040E8FA0A060", version: "1.0.0.20", author: "XQY")]
+    [ScriptType(name: "绝凯夫卡p3麻将指挥", territorys: [1363], guid: "9116F56A-2123-5A29-6466-040E8FA0A060", version: "1.0.0.21", author: "XQY")]
     public class P3麻将指挥模式
     {
         #region 用户设置
@@ -54,7 +54,7 @@ namespace FF14脚本
         bool 麻将数据收集完成 = false;
         int 麻将编号 = 0;
         int 收集次数 = 0;
-        private CancellationTokenSource 令牌源;
+        private CancellationTokenSource 令牌源 = new CancellationTokenSource();
 
         Dictionary<int, int> _麻将编号 = new Dictionary<int, int>
         {
